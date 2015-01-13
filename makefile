@@ -39,6 +39,17 @@ debug: $(PROGRAM_NAME)
 %.cuo: %.cu %.cuh
 	nvcc $(NVFLAGS) $(CPPFLAGS) -o $@ -dc $<
 
+# This is pretty ugly...details below
+# The program depends on both C++ and CUDA Objects, but storing CUDA objects as .o files results in circular dependency
+# warnings from Make. However, nvcc requires that object files for linking end in the .o extension, else it will throw
+# an error saying that it doesn't know how to handle the file. Using a non .o rule for Make and then renaming the file 
+# to have the .o extension for nvcc won't suffice because the program will depend on the non .o file but the files in
+# the directory after compilation will have a .o suffix. Thus, when one goes to recompile the code all files will be
+# recompiled instead of just the ones that have been updated. 
+#
+# The solution below solves these issues by silently converting the non .o suffix needed by make to the .o suffix 
+# required by nvcc, calling nvcc, and then converting back to the non .o suffix for future, dependency-based 
+# compilation.
 $(PROGRAM_NAME): $(OBJECTS) 
 	@ for cu_obj in $(program_CU_OBJS); \
 	do				\
